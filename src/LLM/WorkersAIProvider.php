@@ -47,8 +47,15 @@ final class WorkersAIProvider implements ProviderInterface
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($response === false || $httpCode >= 400) {
-            return new LLMResponse(content: "API error (HTTP {$httpCode})", toolCalls: null, finishReason: 'error');
+        if ($response === false) {
+            return new LLMResponse(content: "API connection failed", toolCalls: null, finishReason: 'error');
+        }
+
+        if ($httpCode >= 400) {
+            $errData = json_decode($response, true);
+            $errMsg = $errData['errors'][0]['message'] ?? ($errData['error'] ?? "HTTP {$httpCode}");
+            error_log("Workers AI error: {$errMsg} | Payload keys: " . implode(',', array_keys($payload)));
+            return new LLMResponse(content: "I encountered an issue processing your request. Let me try a different approach.", toolCalls: null, finishReason: 'stop');
         }
 
         $raw = json_decode($response, true) ?? [];

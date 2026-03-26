@@ -115,8 +115,10 @@ final class Chimera
                         CURLOPT_POSTFIELDS => json_encode(['text' => [$text]]),
                         CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 30, CURLOPT_SSL_VERIFYPEER => false,
                     ]);
-                    $data = json_decode(curl_exec($ch), true);
+                    $response = curl_exec($ch);
                     curl_close($ch);
+                    if ($response === false) return array_fill(0, 768, 0.0);
+                    $data = json_decode($response, true) ?? [];
                     return $data['result']['data'][0] ?? array_fill(0, 768, 0.0);
                 };
 

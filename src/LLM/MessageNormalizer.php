@@ -23,6 +23,11 @@ final class MessageNormalizer
             return self::parseOpenAI($raw);
         }
 
+        // Format 1b: Workers AI wrapping OpenAI format in result.choices
+        if (isset($raw['result']['choices'][0]['message'])) {
+            return self::parseOpenAI($raw['result']);
+        }
+
         // Format 2: Workers AI flat format
         if (isset($raw['result']['response']) || isset($raw['result']['tool_calls'])) {
             return self::parseWorkersAI($raw);

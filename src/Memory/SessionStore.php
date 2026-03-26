@@ -7,13 +7,18 @@ namespace ChimeraPHP\Memory;
  */
 final class SessionStore
 {
-    private \SQLite3 $db;
+    private ?\SQLite3 $db = null;
     private bool $ftsEnabled = false;
+    private bool $available = false;
 
     public function __construct(string $dataDir)
     {
+        if (!class_exists(\SQLite3::class)) {
+            return; // Graceful degradation — sessions disabled
+        }
         if (!is_dir($dataDir)) mkdir($dataDir, 0755, true);
         $this->db = new \SQLite3($dataDir . '/sessions.db');
+        $this->available = true;
         $this->db->exec('PRAGMA journal_mode=WAL');
         $this->db->exec('CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, title TEXT, model TEXT, platform TEXT, created_at TEXT, message_count INTEGER DEFAULT 0)');
         $this->db->exec('CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT, role TEXT, content TEXT, tool_calls TEXT, created_at TEXT)');
@@ -29,6 +34,7 @@ final class SessionStore
 
     public function createSession(string $model = '', string $platform = 'cli'): string
     {
+        if (!$this->available) return bin2hex(random_bytes(8));
         $id = bin2hex(random_bytes(8));
         $stmt = $this->db->prepare('INSERT INTO sessions (id, title, model, platform, created_at) VALUES (:id, :title, :model, :platform, :at)');
         $stmt->bindValue(':id', $id);
@@ -42,6 +48,7 @@ final class SessionStore
 
     public function saveMessages(string $sessionId, array $messages): void
     {
+        if (!$this->available) return;
         $this->db->exec('BEGIN');
         $stmt = $this->db->prepare('INSERT INTO messages (session_id, role, content, tool_calls, created_at) VALUES (:sid, :role, :content, :tc, :at)');
 
@@ -76,7 +83,7 @@ final class SessionStore
 
     public function search(string $query, int $limit = 10): array
     {
-        if (!$this->ftsEnabled || $query === '') return [];
+        if (!$this->available || !$this->ftsEnabled || $query === '') return [];
 
         $results = [];
         $stmt = $this->db->prepare("SELECT session_id, snippet(messages_fts, 0, '>', '<', '...', 30) as snippet FROM messages_fts WHERE content MATCH :q LIMIT :lim");
@@ -92,6 +99,7 @@ final class SessionStore
 
     public function listSessions(int $limit = 20): array
     {
+        if (!$this->available) return [];
         $results = [];
         $stmt = $this->db->prepare('SELECT * FROM sessions ORDER BY created_at DESC LIMIT :lim');
         $stmt->bindValue(':lim', $limit, SQLITE3_INTEGER);

@@ -10,11 +10,15 @@ use ChimeraPHP\LLM\ProviderInterface;
  */
 final class LearningLoop
 {
+    private mixed $embedFn;
+
     public function __construct(
         private readonly ProviderInterface $llm,
         private readonly ?object $agentMemory = null,
-        private readonly ?callable $embedFn = null,
-    ) {}
+        ?callable $embedFn = null,
+    ) {
+        $this->embedFn = $embedFn;
+    }
 
     /**
      * @param Message[] $messages Conversation history

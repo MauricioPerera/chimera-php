@@ -36,7 +36,7 @@ final class Chimera
     private array $history = [];
 
     private ?object $agentMemory = null;
-    private ?callable $embedFn = null;
+    private mixed $embedFn = null;
 
     public function __construct(Config $config)
     {

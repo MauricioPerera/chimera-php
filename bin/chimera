@@ -1,0 +1,74 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+$autoloadPaths = [__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'];
+foreach ($autoloadPaths as $p) { if (file_exists($p)) { require_once $p; break; } }
+
+use ChimeraPHP\Chimera;
+use ChimeraPHP\Config;
+use ChimeraPHP\Gateway\CliGateway;
+
+$args = array_slice($argv, 1);
+$command = $args[0] ?? 'chat';
+
+// Parse --model override
+$modelOverride = null;
+foreach ($args as $i => $arg) {
+    if ($arg === '--model' && isset($args[$i + 1])) {
+        $modelOverride = $args[$i + 1];
+    }
+}
+
+$config = new Config();
+$chimera = new Chimera($config);
+
+if ($modelOverride) {
+    $chimera->getProvider()->setModel($modelOverride);
+}
+
+match ($command) {
+    'chat' => (new CliGateway($chimera))->start(),
+    'tools' => showTools($chimera),
+    'model' => showModel($chimera),
+    'search' => searchSessions($chimera, $args[1] ?? ''),
+    'version' => print("Chimera PHP v0.1.0\n"),
+    'help' => printHelp(),
+    default => printHelp(),
+};
+
+function showTools(Chimera $c): void {
+    foreach ($c->tools->byCategory() as $cat => $tools) {
+        echo "[{$cat}]\n";
+        foreach ($tools as $t) echo "  {$t->name} — {$t->description}\n";
+    }
+    echo "\nTotal: {$c->tools->count()} tools\n";
+}
+
+function showModel(Chimera $c): void {
+    echo "Provider: {$c->getProvider()->name()}\n";
+    echo "Model: {$c->getProvider()->model()}\n";
+}
+
+function searchSessions(Chimera $c, string $q): void {
+    if (!$q) { echo "Usage: chimera search <query>\n"; return; }
+    $results = $c->sessions->search($q);
+    if (empty($results)) { echo "No results.\n"; return; }
+    foreach ($results as $r) echo "[{$r['session_id']}] {$r['snippet']}\n";
+}
+
+function printHelp(): void {
+    echo "Chimera PHP — Self-improving AI Agent\n\n";
+    echo "Usage: chimera <command> [options]\n\n";
+    echo "Commands:\n";
+    echo "  chat              Interactive CLI (default)\n";
+    echo "  tools             List registered tools\n";
+    echo "  model             Show current model\n";
+    echo "  search <query>    Search past sessions\n";
+    echo "  version           Show version\n";
+    echo "  help              Show this help\n\n";
+    echo "Options:\n";
+    echo "  --model <id>      Override LLM model\n\n";
+    echo "Environment: Set CF_ACCOUNT_ID and CF_API_TOKEN (see .env.example)\n";
+}

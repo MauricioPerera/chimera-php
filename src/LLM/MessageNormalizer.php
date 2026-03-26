@@ -54,9 +54,15 @@ final class MessageNormalizer
             $toolCalls = [];
             foreach ($msg['tool_calls'] as $tc) {
                 $fn = $tc['function'] ?? [];
-                $args = is_string($fn['arguments'] ?? null)
-                    ? (json_decode($fn['arguments'], true) ?? [])
-                    : ($fn['arguments'] ?? []);
+                $rawArgs = $fn['arguments'] ?? '{}';
+                if (is_string($rawArgs)) {
+                    // Handle double-encoded JSON: "\"{}\"" → "{}" → []
+                    $decoded = json_decode($rawArgs, true);
+                    if (is_string($decoded)) $decoded = json_decode($decoded, true);
+                    $args = is_array($decoded) ? $decoded : [];
+                } else {
+                    $args = is_array($rawArgs) ? $rawArgs : [];
+                }
                 $toolCalls[] = new ToolCall(
                     id: $tc['id'] ?? 'call_' . bin2hex(random_bytes(4)),
                     name: $fn['name'] ?? '',

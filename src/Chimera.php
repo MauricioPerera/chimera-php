@@ -129,7 +129,10 @@ final class Chimera
                     embedFn: $this->embedFn,
                 );
                 $this->agentMemory = new \PHPAgentMemory\AgentMemory($memConfig);
-                $this->tools->registerAll(MemoryBridge::tools($this->agentMemory, $this->embedFn));
+                // Register memory tools only in CLI mode (web mode uses context builder instead)
+                if (php_sapi_name() === 'cli') {
+                    $this->tools->registerAll(MemoryBridge::tools($this->agentMemory, $this->embedFn));
+                }
             } catch (\Throwable) {}
         }
 

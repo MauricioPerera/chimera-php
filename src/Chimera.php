@@ -133,8 +133,10 @@ final class Chimera
             } catch (\Throwable) {}
         }
 
-        // php-agent-shell
-        if (class_exists(\PHPAgentShell\AgentShell::class) && $this->embedFn) {
+        // php-agent-shell — use fallback tools in web/API mode (avoids 19 embedding calls)
+        // Full AgentShell with vector discovery only in CLI mode
+        $isCli = php_sapi_name() === 'cli';
+        if ($isCli && class_exists(\PHPAgentShell\AgentShell::class) && $this->embedFn) {
             try {
                 $shell = new \PHPAgentShell\AgentShell(embedFn: $this->embedFn, dimensions: 768);
                 $shell->registerDefaults();
